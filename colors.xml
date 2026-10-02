@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ok">#2E7D32</color>
+    <color name="bad">#C62828</color>
+    <color name="warn">#F9A825</color>
+    <color name="error">#546E7A</color>
+    <color name="pending">#1565C0</color>
+    <color name="idle">#455A64</color>
+    <color name="toolbar">#263238</color>
+    <color name="toolbarDark">#1C262B</color>
+    <color name="bg">#EEF1F3</color>
+    <color name="text">#212121</color>
+    <color name="textSecondary">#66727A</color>
+</resources>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="20dp"
+        android:paddingTop="4dp"
+        android:paddingRight="20dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            style="@style/SettingsHeader"
+            android:layout_marginTop="4dp"
+            android:text="Сканирование" />
+
+        <CheckBox
+            android:id="@+id/cbAutoSubmit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Проверять сразу после скана, даже если сканер не присылает Enter" />
+
+        <CheckBox
+            android:id="@+id/cbRestoreGs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Восстанавливать разделители GS, если сканер их потерял" />
+
+        <CheckBox
+            android:id="@+id/cbLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Исправлять русскую раскладку (ЙЦУКЕН → QWERTY)" />
+
+        <CheckBox
+            android:id="@+id/cbSound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Звук результата" />
+
+        <CheckBox
+            android:id="@+id/cbVibrate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Вибрация при проблеме" />
+
+        <TextView
+            style="@style/SettingsHeader"
+            android:text="Запрос к Честному знаку" />
+
+        <RadioGroup
+            android:id="@+id/rgApi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbAuto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Автоматически (рекомендуется)" />
+
+            <RadioButton
+                android:id="@+id/rbV2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="POST /v2/mobile/check" />
+
+            <RadioButton
+                android:id="@+id/rbV1Post"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="POST /mobile/check" />
+
+            <RadioButton
+                android:id="@+id/rbV1Get"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GET /mobile/check" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Адрес сервера"
+            android:textColor="@color/textSecondary"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/etBaseUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:singleLine="true"
+            android:textSize="14sp" />
+
+        <CheckBox
+            android:id="@+id/cbTrustAll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Не проверять SSL-сертификат (только если старый ТСД пишет «Ошибка SSL»)" />
+
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/textSecondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>
