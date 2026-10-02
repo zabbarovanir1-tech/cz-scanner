@@ -137,11 +137,18 @@ object ResultEvaluator {
 
         // --- ошибки сервера с JSON-телом ---
         if (httpCode >= 400 && !json.has("codeFounded") && group == null && cisInfo == null) {
-            val msg = firstString(listOf(json), "message", "error_message", "errorDescription", "description", "error", "title")
+            val msg = firstString(listOf(json), "message", "msg", "error_message", "errorDescription", "description", "error", "title")
             return when (httpCode) {
                 451 -> Verdict(Level.ERROR, "Сервис ЧЗ недоступен из этой страны (нужен российский интернет)")
                 429 -> Verdict(Level.ERROR, "Слишком много запросов — подождите минуту")
-                404, 400 -> Verdict(Level.BAD, "Код не найден в Честном знаке", details = listOfNotNull(msg?.let { "Ответ" to it }))
+                404, 400 -> if (msg != null && (msg.contains("compatible", true) || msg.contains("format", true))) {
+                    Verdict(Level.BAD, "Сервер не принял формат кода", details = listOf(
+                        "Ответ" to msg,
+                        "Что делать" to "Нажмите «Отправить» и пришлите эти подробности — поправим разбор кода"
+                    ))
+                } else {
+                    Verdict(Level.BAD, "Код не найден в Честном знаке", details = listOfNotNull(msg?.let { "Ответ" to it }))
+                }
                 else -> Verdict(Level.ERROR, "Ошибка сервера ЧЗ (HTTP $httpCode)", details = listOfNotNull(msg?.let { "Ответ" to it }))
             }
         }
@@ -223,6 +230,26 @@ object ResultEvaluator {
         catalogOrGroupDetails(json, group, details)
 
         return Verdict(level, title, product, rawStatus, details)
+    }
+
+    /** Сервер ответил «код не найден / неверный код» (а не ошибкой связи). */
+    fun isNotFound(httpCode: Int, body: String?): Boolean {
+        val json = parseObject(body)
+        if (json == null) return httpCode == 400 || httpCode == 404
+        val st = json.optString("status", "").trim()
+        if (st.equals("wrong", ignoreCase = true) || st.equals("invalid", ignoreCase = true)) return true
+        if (json.has("codeFounded")) return !json.optBoolean("codeFounded", true)
+        if (httpCode == 400 || httpCode == 404) return findGroup(json) == null && json.optJSONObject("cisInfo") == null
+        return false
+    }
+
+    /** Сервер нашёл код (ответ 200 с данными о коде). */
+    fun isFound(httpCode: Int, body: String?): Boolean {
+        if (httpCode != 200) return false
+        val json = parseObject(body) ?: return false
+        if (isNotFound(httpCode, body)) return false
+        if (json.has("codeFounded")) return json.optBoolean("codeFounded", false)
+        return findGroup(json) != null || json.has("outerStatus") || json.optJSONObject("cisInfo") != null
     }
 
     private fun catalogOrGroupDetails(json: JSONObject, group: JSONObject?, details: MutableList<Pair<String, String>>) {

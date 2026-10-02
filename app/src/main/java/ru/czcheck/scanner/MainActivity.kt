@@ -297,11 +297,11 @@ class MainActivity : Activity() {
             val r = client.check(n, cfg)
             val verdict = if (r.error == null) ResultEvaluator.evaluate(r.httpCode, r.body) else null
             main.post {
-                if (r.isSuccess && settings.apiMode == ApiMode.AUTO && settings.workingVariant != r.variant) {
+                if (r.isSuccess && r.note == null && settings.apiMode == ApiMode.AUTO && settings.workingVariant != r.variant) {
                     settings.workingVariant = r.variant
                 }
                 item.httpCode = r.httpCode
-                item.requestInfo = r.variant.title + "\n" + r.url + (r.requestBody?.let { "\n" + it } ?: "")
+                item.requestInfo = buildRequestInfo(r)
                 item.response = r.body
                 if (verdict == null) {
                     item.level = Level.ERROR
@@ -323,13 +323,34 @@ class MainActivity : Activity() {
                 } else {
                     item.level = verdict.level
                     item.title = verdict.title
+                    if (r.foundByCisOnly && verdict.level == Level.OK) {
+                        // статус известен, но код проверки (криптохвост) сервер не подтвердил
+                        item.level = Level.WARN
+                        item.title = "В обороте, но код проверки не подтверждён"
+                    }
                     item.product = verdict.product
                     item.statusCode = verdict.statusCode
-                    item.details = verdict.details
+                    item.details = if (r.note != null) listOf("Примечание" to r.note) + verdict.details else verdict.details
                 }
                 onChecked(item)
             }
         }
+    }
+
+    private fun buildRequestInfo(r: CrptClient.Response): String {
+        val sb = StringBuilder()
+        sb.append(r.variant.title).append('\n').append(r.url)
+        r.requestBody?.let { sb.append('\n').append(it) }
+        if (r.attempts.size > 1) {
+            sb.append("\n\nВсе запросы (").append(r.attempts.size).append("):")
+            r.attempts.forEachIndexed { i, a ->
+                sb.append("\n").append(i + 1).append(") ").append(a.label).append(" → ")
+                sb.append(a.error ?: ("HTTP " + a.httpCode))
+                a.requestBody?.let { sb.append("\n   отправлено: ").append(it) }
+                a.body?.let { sb.append("\n   ответ: ").append(it.replace('\n', ' ').take(300)) }
+            }
+        }
+        return sb.toString()
     }
 
     private fun onChecked(item: ScanItem) {
@@ -406,7 +427,7 @@ class MainActivity : Activity() {
             .setTitle(item.title)
             .setView(scroll)
             .setPositiveButton("Перепроверить") { _, _ -> recheck(item) }
-            .setNeutralButton("Копировать код") { _, _ -> copyToClipboard(item.code) }
+            .setNeutralButton("Отправить") { _, _ -> shareText("Проверка ЧЗ: " + item.title, item.title + "\n" + sb.toString()) }
             .setNegativeButton("Закрыть", null)
             .setOnDismissListener { input.requestFocus() }
             .show()
@@ -462,6 +483,18 @@ class MainActivity : Activity() {
             startActivity(Intent.createChooser(send, "Отправить список"))
         } catch (e: Exception) {
             toast("Нет приложения, чтобы отправить список")
+        }
+    }
+
+    private fun shareText(subject: String, text: String) {
+        val send = Intent(Intent.ACTION_SEND)
+        send.type = "text/plain"
+        send.putExtra(Intent.EXTRA_SUBJECT, subject)
+        send.putExtra(Intent.EXTRA_TEXT, text)
+        try {
+            startActivity(Intent.createChooser(send, "Отправить"))
+        } catch (e: Exception) {
+            copyToClipboard(text)
         }
     }
 
@@ -634,7 +667,7 @@ class MainActivity : Activity() {
     private fun copyToClipboard(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("Код маркировки", text))
-        toast("Код скопирован")
+        toast("Скопировано")
     }
 
     private fun scheduleSave() {

@@ -87,6 +87,16 @@ object CodeNormalizer {
             for (p in aimPrefixes) if (s.startsWith(p)) { s = s.substring(p.length); changed = true }
             while (s.isNotEmpty() && s[0] == GS) { s = s.substring(1); changed = true }
         }
+        // 4а. Формат «со скобками»: (01)04670535000453(21)ABC...(91)EE12(92)...
+        // Так выдают код сканеры Urovo и др., если включён вывод GS1 с идентификаторами в скобках.
+        if (s.startsWith("(")) {
+            val plain = fromBracketed(s.replace(GS.toString(), ""))
+            if (plain != null) {
+                s = plain
+                notes.add("убраны скобки вокруг идентификаторов (01)(21)…")
+            }
+        }
+
         // хвостовые GS не нужны
         s = s.trimEnd(GS)
         // двойные GS
@@ -214,6 +224,52 @@ object CodeNormalizer {
             }
         }
         return out
+    }
+
+    private val bracketAi = Regex("""^\((01|02|10|11|13|15|17|21|22|91|92|93|240|241|8005|31\d\d|33\d\d)\)""")
+
+    /** Привычные длины значений, чтобы не спутать скобку внутри серийного номера с началом следующего AI. */
+    private val usualLength = mapOf("21" to setOf(13, 6, 7), "91" to setOf(4), "93" to setOf(4), "92" to setOf(44))
+
+    private fun bracketFixedLength(ai: String): Int? = fixedAi[ai]
+        ?: if (ai.length == 4 && (ai.startsWith("31") || ai.startsWith("33"))) 6 else null
+
+    /**
+     * Переводит запись вида (01)GTIN(21)серийный(93)код в машинный вид 01GTIN21серийный<GS>93код.
+     * Возвращает null, если строка не похожа на такую запись.
+     */
+    fun fromBracketed(s: String): String? {
+        if (!s.startsWith("(") || bracketAi.find(s) == null) return null
+        val out = StringBuilder()
+        var pos = 0
+        while (pos < s.length) {
+            val m = bracketAi.find(s.substring(pos)) ?: return null
+            val ai = m.groupValues[1]
+            pos += m.value.length
+            val fixed = bracketFixedLength(ai)
+            if (fixed != null) {
+                if (pos + fixed > s.length) return null
+                out.append(ai).append(s, pos, pos + fixed)
+                pos += fixed
+                continue
+            }
+            // переменная длина: до следующего «(AI)» или до конца строки
+            val candidates = ArrayList<Int>()
+            var p = s.indexOf('(', pos)
+            while (p >= 0) {
+                if (bracketAi.find(s.substring(p)) != null) candidates.add(p)
+                p = s.indexOf('(', p + 1)
+            }
+            val lengths = usualLength[ai]
+            val end = candidates.firstOrNull { lengths != null && (it - pos) in lengths }
+                ?: candidates.firstOrNull()
+                ?: s.length
+            if (end <= pos) return null
+            out.append(ai).append(s, pos, end)
+            pos = end
+            if (pos < s.length) out.append(GS)
+        }
+        return out.toString()
     }
 
     /** Код для запроса: для GS1 добавляем {FNC1}, как это делает приложение Честный знак. */
